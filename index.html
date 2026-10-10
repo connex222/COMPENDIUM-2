@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#EFE8F8">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="The Compendium II — a shelf of puzzles. Offline, no network, no accounts.">
-<title>The Compendium II</title>
-<!-- Compendium II shell, build V4: all nine volumes cut. Bight, Marquetry and Furlong added; layouts for phone, tablet and computer. -->
+<title>Compendium 2 - Nine puzzles for you to play</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Compendium 2">
+<meta property="og:title" content="Compendium 2 - Nine puzzles for you to play">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Compendium 2 - Nine puzzles for you to play">
 <style>
 /* ==================================================================
    THE COMPENDIUM II — the shell
@@ -373,7 +376,11 @@ function payload(slug){
      srcdoc gives the iframe broken script tags and a blank volume.
      Note the wording — writing that tag literally in this comment would end
      this script block too, which is the same bug one level up. */
-  return node.textContent.split("<\\/script").join("</script");
+  /* Their title and meta tags are escaped too, so link-preview scrapers that
+     read the raw file see only the shell's own title and description. */
+  return node.textContent.split("<\\/script").join("</script")
+    .split("<\\/title").join("</title").split("<\\title").join("<title")
+    .split("<\\meta").join("<meta");
 }
 /* Merged builds carry their volumes inside them. Once one baked block exists,
    the file is a merged build, and an entry with no block is not shippable —
@@ -577,10 +584,10 @@ else start();
 <script type="text/plain" id="vol-fell"><!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Fell — Compendium II</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Fell — Compendium II<\/title>
 <style>
 /* ═══════════════════════════════════════════════════════════
    VOLUME III · FELL
@@ -1677,11 +1684,11 @@ function rngFrom(seed) {
 <script type="text/plain" id="vol-mirrorwork"><!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#12071F">
-<meta name="description" content="Mirrorwork — a card-matching memory game with five procedurally drawn decks.">
-<title>Mirrorwork — a memory game</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<\meta name="theme-color" content="#12071F">
+<\meta name="description" content="Mirrorwork — a card-matching memory game with five procedurally drawn decks.">
+<\title>Mirrorwork — a memory game<\/title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%232A1050'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23F0C35C' stroke-width='5'/><circle cx='50' cy='50' r='11' fill='%23F0C35C'/></svg>">
 <style>
   :root {
@@ -2910,12 +2917,12 @@ newGame();
 <script type="text/plain" id="vol-riffle"><!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#12071F">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="Riffle — a word scramble and anagram puzzle. Offline, single file.">
-<title>Riffle</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<\meta name="theme-color" content="#12071F">
+<\meta name="apple-mobile-web-app-capable" content="yes">
+<\meta name="description" content="Riffle — a word scramble and anagram puzzle. Offline, single file.">
+<\title>Riffle<\/title>
 <style>
 /* ==================================================================
    RIFFLE — word scramble and anagram puzzle
@@ -4140,12 +4147,12 @@ if(sharedNotice) setTimeout(()=>toast("Someone sent you this rack. Same letters,
 <script type="text/plain" id="vol-glean"><!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#12071F">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="Glean — trace one line, take the best haul. Offline, single file.">
-<title>Glean</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<\meta name="theme-color" content="#12071F">
+<\meta name="apple-mobile-web-app-capable" content="yes">
+<\meta name="description" content="Glean — trace one line, take the best haul. Offline, single file.">
+<\title>Glean<\/title>
 <style>
 /* ==================================================================
    GLEAN — one line across the field, take the best haul
@@ -5096,10 +5103,10 @@ if(shared !== null) setTimeout(()=>toast("Someone sent you this field. Same valu
 <script type="text/plain" id="vol-bight"><!DOCTYPE html>
 <html lang="en-GB" data-theme="day">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Bight</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Bight<\/title>
 <style>
 /* ==================================================================
    BIGHT — one loop of rope through every square; knots say where it bends.
@@ -6111,10 +6118,10 @@ function vkClockKeeper(el, get, set) {
 <script type="text/plain" id="vol-marquetry"><!DOCTYPE html>
 <html lang="en-GB" data-theme="day">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Marquetry</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Marquetry<\/title>
 <style>
 /* ==================================================================
    MARQUETRY — thirty veneers, one panel; set full lines and match the wood.
@@ -7036,10 +7043,10 @@ function vkClockKeeper(el, get, set) {
 <script type="text/plain" id="vol-reeve"><!DOCTYPE html>
 <html lang="en-GB" data-theme="day">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Reeve</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Reeve<\/title>
 <style>
 /* ==================================================================
    REEVE — prove every plot paid or owing. No guessing.
@@ -8179,10 +8186,10 @@ function vkClockKeeper(el, get, set) {
 <script type="text/plain" id="vol-shunt"><!DOCTYPE html>
 <html lang="en-GB" data-theme="day">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Shunt</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Shunt<\/title>
 <style>
 /* ==================================================================
    SHUNT — tap a wagon end and it runs until it hits something.
@@ -9242,10 +9249,10 @@ function vkClockKeeper(el, get, set) {
 <script type="text/plain" id="vol-furlong"><!DOCTYPE html>
 <html lang="en-GB" data-theme="day">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Furlong</title>
+<\meta charset="utf-8">
+<\meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<\meta name="color-scheme" content="light dark">
+<\title>Furlong<\/title>
 <style>
 /* ==================================================================
    FURLONG — fence the field into strips; each number is its strip's size.
