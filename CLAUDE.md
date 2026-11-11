@@ -24,7 +24,7 @@ The second Compendium: nine puzzle volumes in one file - Fell, Mirrorwork, Riffl
 
 ## Project notes
 
-- Shaun will not release Compendium II until all nine volumes are finished. Do not suggest shipping a subset.
+- Compendium II is complete (all nine volumes). It is published on GitHub Pages only; there are no plans for an Android release.
 - Volumes must be moreish and leave a result worth showing other people.
 - Volumes run in a same-origin iframe so their `const` names cannot collide. Keep each volume self-contained.
 
