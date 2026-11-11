@@ -2,7 +2,7 @@
 
 Nine puzzles for you to play: Fell, Mirrorwork, Riffle, Glean, Reeve, Shunt, Bight, Marquetry and Furlong.
 
-**In development.** It will be released when all nine volumes are finished.
+Complete. All nine volumes are finished and playable.
 
 **Open it:** https://connex222.github.io/COMPENDIUM-2/
 
