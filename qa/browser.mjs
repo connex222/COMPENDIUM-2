@@ -141,7 +141,7 @@ try{
   await page.keyboard.press("Enter");
   assert.equal(await page.locator('#settings:not([hidden])').count(),1);
   await page.keyboard.press("Escape");
-  assert.equal(await page.locator('#settings:not([hidden])').count(),0);
+  await page.locator("#settings").waitFor({state:"hidden",timeout:3000});
   checks.push("Keyboard: settings open, Escape closes");
   assert.equal(errors.length,0,"Browser runtime errors: "+errors.join(" | "));
   console.log("PASS "+checks.length+" browser checks:\n"+checks.map(x=>"  ✓ "+x).join("\n"));
