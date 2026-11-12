@@ -2340,7 +2340,7 @@ C2.register({
   mount: function (opts) {
     var c = readChallenge((opts && opts.frag) || C2.frag());
     if (!c) return;                                   // boot has already dealt a fresh board
-    if (c.seed === seed && c.size === sizeN && c.deck === deckId) return;
+    if (c.seed === seed && c.size === sizeN && c.deck === deckId && c.peek === peekOn) return;
     deckId = c.deck; sizeN = c.size; peekOn = c.peek;
     pendingSeed = c.seed;
     challenge = c;                                    // turns the "beat their time" banner on
@@ -2348,7 +2348,7 @@ C2.register({
   },
   status: function () { return { best: best[bestKey()] || null, size: sizeN, deck: deckId }; },
   /* Backgrounded mid-game: stop the clock rather than let it run on. */
-  suspend: function () { try { setPaused(true); } catch (e) {} }
+  suspend: function () { try { resolveNow(); setPaused(true); saveSession(); } catch (e) {} }
 });
 
 /* ---------------- decks & palettes ---------------- */
@@ -2618,6 +2618,51 @@ const clock = ms => {
 const savePrefs = () => {
   C2.write("prefs", {deck:deckId, size:sizeN, peek:peekOn});
 };
+/* An unfinished memory deal must survive closing the volume, a refresh or
+   a backgrounded phone. Transient face-up misses are settled before suspend
+   and are not part of the stored result. Existing best/prefs keys are kept. */
+function saveSession(){
+  if(won){ C2.write("session", null); return; }
+  const running = startedAt !== null;
+  const time = running && !paused ? Math.max(0,Date.now()-startedAt) : elapsed;
+  C2.write("session", {
+    version:1,deck:deckId,size:sizeN,peek:peekOn,seed:seed>>>0,
+    matched:Array.from(matched),moves:moves,hits:hits,
+    elapsed:Math.max(0,Math.round(time)),started:running,
+    challenge:challenge && challenge.seed===seed ? challenge : null
+  });
+}
+function restoreSession(){
+  const s=C2.read("session",null);
+  if(!s || s.version!==1 || !DECKS.some(d=>d.id===s.deck) ||
+     !SIZES.some(z=>z.n===s.size) || !Number.isSafeInteger(s.seed) ||
+     s.seed<0 || s.seed>0xffffffff || typeof s.peek!=="boolean" ||
+     !Number.isSafeInteger(s.moves) || s.moves<0 ||
+     !Number.isSafeInteger(s.hits) || s.hits<0 || s.hits>s.moves ||
+     !Number.isFinite(s.elapsed) || s.elapsed<0 || !Array.isArray(s.matched)) return false;
+  const link=readChallenge(C2.frag());
+  if(link && (link.seed!==s.seed || link.size!==s.size || link.deck!==s.deck || link.peek!==s.peek)) return false;
+  deckId=s.deck; sizeN=s.size; peekOn=s.peek; seed=s.seed; pendingSeed=null;
+  challenge=link || (s.challenge && s.challenge.seed===seed ? s.challenge : null);
+  cards=buildDeck();
+  const allowed=new Set(cards.filter(c=>!c.ornament).map(c=>c.uid));
+  const savedMatches=s.matched.filter(uid=>typeof uid==="string" && allowed.has(uid));
+  if(new Set(savedMatches).size!==savedMatches.length || savedMatches.length%2!==0 ||
+     savedMatches.length>sizeInfo().pairs*2) return false;
+  const valid=new Set(savedMatches);
+  for(const c of cards) if(valid.has(c.uid) && !valid.has(c.i+(c.uid.endsWith("a")?"b":"a"))) return false;
+  matched=valid; flipped=[]; moves=s.moves; hits=s.hits;
+  if(matched.size/2>hits || hits>moves) return false;
+  elapsed=Math.round(s.elapsed); startedAt=s.started ? Date.now()-elapsed : null;
+  won=false; paused=!!s.started;
+  el("win").hidden=true; el("veil").hidden=!paused;
+  el("pause").innerHTML=paused ? ICON_PLAY : ICON_PAUSE;
+  el("pause").setAttribute("aria-label",paused?"Resume game":"Pause game");
+  renderChips(); renderBoard(); paintCards(); paintStats(); paintChallenge();
+  syncUrl();
+  say(paused ? "Deal restored. Resume when ready." : "Your saved deal is ready.");
+  return true;
+}
 
 const say = msg => { el("say").textContent = msg; };
 
@@ -2822,6 +2867,7 @@ function newGame(){
   Sound.fire("deal");
   syncUrl();
   if (peekOn) runPeek();
+  saveSession();
 }
 
 /* the address bar always describes the board on screen, so a refresh
@@ -2865,6 +2911,7 @@ function setPaused(on){
   el("pause").setAttribute("aria-label", paused ? "Resume game" : "Pause game");
   paintCards();
   paintStats();
+  saveSession();
   Sound.fire("toggle");
 }
 
@@ -2880,6 +2927,7 @@ function onFlip(uid){
   Sound.fire("flip");
 
   flipped.push(uid);
+  saveSession();
   paintCard(card);
   if (flipped.length < 2) return;
 
@@ -2897,6 +2945,7 @@ function onFlip(uid){
       paintStats();
       say("Match. " + (matched.size/2) + " of " + sizeInfo().pairs + " found.");
       if (matched.size === sizeInfo().pairs * 2) finish();
+      else saveSession();
     }, 460);
   } else {
     Sound.fire("miss");
@@ -2907,6 +2956,7 @@ function onFlip(uid){
     schedule(() => {
       flipped = [];
       paintCard(a); paintCard(b);
+      saveSession();
     }, 900);
   }
   paintStats();
@@ -2948,6 +2998,7 @@ function finish(){
   el("win").hidden = false;
   paintCards();
   paintStats();
+  saveSession();
   say("Round complete in " + clock(elapsed) + " and " + moves + " moves.");
   el("again").focus();
 }
@@ -3039,7 +3090,7 @@ document.addEventListener("keydown", e => {
 });
 
 /* auto-pause when the game leaves the screen */
-document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { resolveNow(); setPaused(true); saveSession(); } });
 
 /* keep the board inside the viewport on every layout change */
 window.addEventListener("resize", queueFit, { passive:true });
@@ -3053,7 +3104,7 @@ el("pause").innerHTML = ICON_PAUSE;
 el("pause").setAttribute("aria-label", "Pause game");
 el("share").innerHTML = ICON_CHAT + "<span>Share on WhatsApp</span>";
 
-newGame();
+if(!restoreSession()) newGame();
 <\/script>
 </body>
 </html>
