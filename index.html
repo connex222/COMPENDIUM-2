@@ -721,10 +721,10 @@ $("setClose").onclick = hide;
 $("shClose").onclick = hide;
 $("scrim").onclick = hide;
 $("back").onclick = ()=>{
-  /* Opened from the roll: step back through history and let popstate close
-     it, so Back on the roll then leaves the app instead of reopening this. */
-  if(history.state && history.state.slug) history.back();
-  else close();
+  /* A srcdoc iframe contributes entries to the joint browser history.
+     history.back() may navigate only that iframe, leaving the puzzle in place.
+     Explicit Back to collection must always close the parent view directly. */
+  if(active) close();
 };
 $("soundSw").onclick = ()=>{ prefs.sound = !prefs.sound; applyPrefs(true); };
 $("hapticSw").onclick = ()=>{ prefs.haptic = !prefs.haptic; applyPrefs(true); };
