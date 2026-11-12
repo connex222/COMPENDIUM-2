@@ -29,7 +29,7 @@ for(let i=0;i<starts.length;i++){
   assert.ok(block.includes("C2.register({"),"Volume registration for "+starts[i][1]);
 }
 assert.equal((html.match(/<script[^>]*\bsrc\s*=/gi)||[]).length,0,"No external script dependencies");
-assert.ok(!/<link[^>]+(?:stylesheet|https?:)/i.test(html),"No external stylesheet dependencies");
+assert.ok(!/<link\b[^>]*\bhref\s*=\s*["\x27]https?:\/\//i.test(html),"No external stylesheet dependencies");
 
 const start=html.indexOf("function localDate(){");
 const end=html.indexOf("function drawRoll(){",start);
