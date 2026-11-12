@@ -166,6 +166,47 @@ try{
     checks.push(slug+": interactive hint, saved state, refresh recovery, return");
   }
 
+  // Riffle's genuine hint action writes to the current rack slot.
+  await open("riffle");
+  await iframe().locator("#hint").click();
+  const riffleState=await stored("c2.v.riffle.state");
+  const rackLen=riffleState?.d?.len || 6;
+  const rackKey="c2.v.riffle.rack"+rackLen;
+  await page.waitForFunction(key=>{
+    try{return Object.values(JSON.parse(localStorage.getItem(key))?.d?.hints||{}).some(n=>n>0);}
+    catch{return false;}
+  },rackKey,{timeout:20000});
+  const rackBefore=(await stored(rackKey)).d;
+  await page.reload({waitUntil:"domcontentloaded"});
+  await opened("riffle");
+  assert.deepEqual((await stored(rackKey)).d.hints,rackBefore.hints);
+  await back();
+  checks.push("riffle: hint saved to exact letter rack and restored");
+
+  // Marquetry's rotation is an independently saved player decision.
+  await open("marquetry");
+  await iframe().locator("#turn:not([disabled])").waitFor({timeout:20000});
+  const marquetryKey="c2.v.marquetry.day";
+  const beforeTurn=await stored(marquetryKey);
+  await iframe().locator("#turn").click();
+  await page.waitForFunction(before=>{
+    try{
+      const now=JSON.parse(localStorage.getItem("c2.v.marquetry.day"))?.d;
+      return Number.isInteger(now?.q) && now.q!==before?.d?.q;
+    }catch{return false;}
+  },beforeTurn,{timeout:20000});
+  const turned=(await stored(marquetryKey)).d;
+  await page.reload({waitUntil:"domcontentloaded"});
+  await opened("marquetry");
+  await page.waitForFunction(expected=>{
+    try{
+      const now=JSON.parse(localStorage.getItem("c2.v.marquetry.day"))?.d;
+      return now?.q===expected.q && now?.seed===expected.seed;
+    }catch{return false;}
+  },turned,{timeout:20000});
+  await back();
+  checks.push("marquetry: rotate piece, persist orientation, refresh and return");
+
   // Verify keyboard and touch-sized tile targets and cross-game local history.
   await page.locator('#cog').focus();
   await page.keyboard.press("Enter");
