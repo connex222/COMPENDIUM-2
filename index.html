@@ -525,7 +525,7 @@ function progressFor(v){
     return status("new");
   }
   if(v.slug === "glean"){
-    const r = key("run");
+    const r = key("run."+(key("state")?.mode==="free"?"free":"daily"));
     if(r && Number.isInteger(r.i) && (r.mode!=="daily" || r.date===today))
       return r.done ? status("done","Current field completed") :
         Array.isArray(r.path) && r.path.length>1 ? status("progress","Saved line · resume") : status("new");
@@ -4939,6 +4939,38 @@ let cells = [];
 /* ================= persistence ================= */
 function savePrefs(){ C2.write("state", P); }
 function saveHauls(){ C2.write("hauls", HAULS); }
+function dayStamp(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+/* Keep current line separate from the banked best scores. It is intentionally
+   recomputed from the board on restore, never trusted as a stored score. */
+function saveRun(){
+  if(!B) return;
+  C2.write("run."+P.mode,{
+    i:B.i,mode:P.mode,date:dayStamp(),path:path.slice(),runs:runs,done:done
+  });
+}
+function restoreRun(s){
+  if(!s || s.i!==B.i || s.mode!==P.mode ||
+     (P.mode==="daily" && s.date!==dayStamp()) ||
+     !Array.isArray(s.path) || s.path.length<1 || s.path.length>STEPS+1 ||
+     s.path[0]!==B.start) return false;
+  const seen=new Set();
+  for(let j=0;j<s.path.length;j++){
+    const i=s.path[j];
+    if(!Number.isInteger(i) || i<0 || i>=CELLS || seen.has(i) ||
+       (j>0 && nbrs[s.path[j-1]].indexOf(i)<0)) return false;
+    seen.add(i);
+  }
+  path=s.path.slice(); score=0; chain=0; prev=-1;
+  for(const i of path){const v=B.vals[i];chain=stepChain(v,prev,chain);score+=v*chain;prev=v;}
+  const head=path[path.length-1];
+  const terminal=path.length===STEPS+1 || !nbrs[head].some(i=>!seen.has(i));
+  done=!!s.done && terminal;
+  runs=Number.isInteger(s.runs) && s.runs>=0 ? s.runs : 0;
+  paint(); return true;
+}
 function loadAll(){
   P = Object.assign(P, C2.read("state", {}) || {});
   HAULS = C2.read("hauls", {}) || {};
@@ -4990,10 +5022,13 @@ function todayIndex(){
   return ((Math.floor((utc - EPOCH)/86400000) % c) + c) % c;
 }
 function loadBoard(i, quiet){
-  B = board(((i % BOARDS) + BOARDS) % BOARDS);
-  runs = 0; showingBest = false;
+  const saved=C2.read("run."+P.mode,null);
+  B=board(((i%BOARDS)+BOARDS)%BOARDS);
+  runs=0; showingBest=false;
   buildGrid();
-  resetRun(true);
+  resetRun(true,true);
+  restoreRun(saved);
+  saveRun();
   syncHash();
   if(!quiet) drawStrip();
 }
@@ -5009,13 +5044,14 @@ function buildGrid(){
   });
   cells[B.start].classList.add("start");
 }
-function resetRun(quiet){
-  path = [B.start];
-  score = B.vals[B.start];
-  chain = 1; prev = B.vals[B.start];
-  done = false; showingBest = false;
-  el.ghost.style.display = "none";
+function resetRun(quiet,skipSave){
+  path=[B.start];
+  score=B.vals[B.start];
+  chain=1; prev=B.vals[B.start];
+  done=false; showingBest=false;
+  el.ghost.style.display="none";
   paint();
+  if(!skipSave) saveRun();
   if(!quiet) sndBack();
 }
 
@@ -5095,6 +5131,7 @@ function extend(i){
     paint();
     if(!nbrs[i].some(n=>path.indexOf(n) < 0)) { sndDead(); finish(); }
   }
+  saveRun();
   return true;
 }
 function undo(){
@@ -5103,7 +5140,7 @@ function undo(){
   score = scorePath(B.vals, path);
   chain = 0; prev = -1;
   for(const i of path){ const v = B.vals[i]; chain = stepChain(v, prev, chain); prev = v; }
-  sndBack(); paint();
+  sndBack(); paint(); saveRun();
 }
 function floatGain(i, gain){
   if(calm()) return;
@@ -5122,6 +5159,7 @@ function finish(){
   if(score >= B.max){ sndPerf(); toast("<b>Perfect line.</b> Nothing left on the field."); }
   else if(beaten && runs > 1){ sndBeat(); toast("<b>" + score + "</b> beats your " + prevBest + "."); }
   else sndEnd();
+  saveRun();
 }
 
 /* ================= the strip ================= */
@@ -5286,7 +5324,12 @@ if(!(hasFace("Didot") || hasFace("Bodoni MT") || hasFace("Playfair Display")))
 loadAll();
 const shared = parseHash(C2.frag());
 if(shared !== null){ P.mode = "free"; loadBoard(shared, true); }
-else loadBoard(P.mode === "daily" ? todayIndex() : Math.floor(Math.random()*BOARDS), true);
+else {
+  const previous=C2.read("run.free",null);
+  loadBoard(P.mode==="daily" ? todayIndex() :
+    (previous && previous.mode==="free" && !previous.done && Number.isInteger(previous.i) && previous.i>=0 && previous.i<BOARDS ?
+      previous.i : Math.floor(Math.random()*BOARDS)),true);
+}
 markSeg();
 drawStrip();
 requestAnimationFrame(()=>drawLine(el.line, path));
