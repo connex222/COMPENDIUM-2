@@ -551,7 +551,7 @@ function progressFor(v){
     if(!s || typeof s!=="object") return false;
     if(v.slug==="bight") return (Array.isArray(s.h) && s.h.some(Boolean)) || (Array.isArray(s.v) && s.v.some(Boolean));
     if(v.slug==="marquetry") return (s.i||0)>0;
-    if(v.slug==="reeve") return (Array.isArray(s.known) && s.known.some(x=>x!==null && x!==-1 && x!==undefined));
+    if(v.slug==="reeve") return (Array.isArray(s.known) && s.known.filter(x=>x===0 || x===1 || x===true || x===false).length>1);
     if(v.slug==="shunt") return (Array.isArray(s.hist) && s.hist.length>0);
     if(v.slug==="furlong") return (Array.isArray(s.placed) && s.placed.length>0);
     return false;
@@ -9472,7 +9472,7 @@ function vkClockKeeper(el, get, set) {
   function loadFree(seed) {
     mode = "free";
     var s = C2.read("free", null);
-    if (seed === undefined) seed = (s && !s.best) ? s.seed : (Math.random() * 4294967296) >>> 0;
+    if (seed === undefined) seed = (s && !s.done && Number.isInteger(s.seed)) ? s.seed : (Math.random() * 4294967296) >>> 0;
     C2.setFrag("y=" + seed.toString(36));
     generate(seed, FREE[0], FREE[1], function (c) {
       present(c, (s && s.seed === seed && Array.isArray(s.hist)) ? s : null);
