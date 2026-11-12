@@ -377,6 +377,7 @@ const MANIFEST = [
 const DEFAULTS = {mode:"auto", sound:true, haptic:true};
 let prefs = Object.assign({}, DEFAULTS);
 let active = null;                       /* slug of the volume on stage */
+let launchMode = "daily";                 /* respects a saved free-play session */
 let frag = "";                           /* the part of the hash the volume owns */
 /* Inside the Android app the page lives at appassets.androidplatform.net,
    which nobody else can open, so a link built from it is dead on arrival.
@@ -502,7 +503,7 @@ function bareSave(key){
 function progressFor(v){
   const key = k => readRaw("v."+v.slug+"."+k, null);
   const daily = key("day"), free = key("free"), today = localDate();
-  const status = (state,extra) => ({state, extra:extra || ""});
+  const status = (state,extra,mode) => ({state, extra:extra || "",mode:mode || "daily"});
   if(v.slug === "fell"){
     const n = Number(key("size")) || 5;
     const s = bareSave("fell.state"+(n===5?"":n));
@@ -541,10 +542,12 @@ function progressFor(v){
     if(v.slug==="furlong") return (Array.isArray(s.placed) && s.placed.length>0);
     return false;
   };
+  if(daily && daily.date===today && touched(daily) && !daily.done)
+    return status("progress","Today's challenge saved");
+  if(free && !free.done && touched(free))
+    return status("progress","Free puzzle saved","free");
   if(daily && daily.date===today && (daily.done || (v.slug==="marquetry" && daily.first) || (v.slug==="shunt" && daily.best)))
     return status("done","Today's challenge completed");
-  if(daily && daily.date===today && touched(daily)) return status("progress","Today's challenge saved");
-  if(free && !free.done && touched(free)) return status("progress","Free puzzle saved");
   return status("new",key("stats")?.plays ? "A new daily challenge awaits" : "");
 }
 function drawRoll(){
@@ -557,6 +560,7 @@ function drawRoll(){
   $("progressBar").style.width = (cut ? Math.round(done/cut*100) : 0)+"%";
   const box = $("vols");
   box.innerHTML = "";
+  const visits=readRaw("library.visits",{}) || {};
   let shown=0;
   for(const {v,live,progress} of entries){
     if(live && rollFilter!=="all" && progress.state!==rollFilter) continue;
@@ -571,6 +575,12 @@ function drawRoll(){
     meta.className="meta";
     for(const str of [info.kind,info.difficulty,info.length]){
       const chip=document.createElement("span"); chip.textContent=str; meta.appendChild(chip);
+    }
+    const last=visits[v.slug];
+    if(Number.isFinite(last) && last>0 && last<=Date.now()){
+      const lastChip=document.createElement("span");
+      lastChip.textContent="Last opened "+new Date(last).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+      meta.appendChild(lastChip);
     }
     const chip=document.createElement("span");
     chip.className="state"; chip.dataset.state=progress.state;
@@ -597,6 +607,10 @@ for(const b of document.querySelectorAll(".filters button"))
 function open(v, withFrag, fromHistory){
   active = v.slug;
   frag = withFrag || "";
+  launchMode=progressFor(v).mode;
+  const visits=readRaw("library.visits",{}) || {};
+  visits[v.slug]=Date.now();
+  writeRaw("library.visits",visits);
   $("title").textContent = v.title;
   $("back").hidden = false;
   $("cog").hidden = false;
@@ -628,6 +642,7 @@ function close(){
   drawRoll();
   const tile=$("tile-"+last);
   if(tile) tile.focus();
+  else document.querySelector(".filters button[aria-pressed=\"true\"]")?.focus();
   /* Replace, never push: pushing here left the volume's entry behind, so
      the hardware Back button on the roll reopened the volume just closed. */
   try{ history.replaceState({}, "", location.pathname + location.search); }catch(e){}
@@ -638,7 +653,7 @@ $("frame").addEventListener("load", ()=>{ $("spinner").hidden = true; push(); })
 window.addEventListener("message", e=>{
   const d = e.data;
   if(!active || e.source !== $("frame").contentWindow || !d || d.c2 !== 1 || (d.slug && d.slug!==active)) return;
-  if(d.type === "ready"){ $("spinner").hidden = true; push(); mount({mode:"daily", frag:frag}); }
+  if(d.type === "ready"){ $("spinner").hidden = true; push(); mount({mode:launchMode, frag:frag}); }
   if(d.type === "share" && Array.isArray(d.lines)) openShare(d.lines);
   /* §9 the volume names its board; the shell puts it in the address bar */
   if(d.type === "frag" && typeof d.frag === "string" && d.slug === active){
@@ -652,7 +667,9 @@ window.addEventListener("message", e=>{
 
 /* ---------- sheets ---------- */
 let openSheet = null;
+let sheetReturnFocus = null;
 function show(id){
+  sheetReturnFocus = document.activeElement;
   const s = $(id);
   s.hidden = false;
   $("scrim").classList.add("on");
@@ -668,6 +685,8 @@ function hide(){
   $("scrim").classList.remove("on");
   setTimeout(()=>{ s.hidden = true; }, 320);
   openSheet = null;
+  if(sheetReturnFocus && typeof sheetReturnFocus.focus==="function") sheetReturnFocus.focus();
+  sheetReturnFocus=null;
 }
 function openShare(lines){
   pendingShare = lines.join("\n");
@@ -700,7 +719,18 @@ $("shCopy").onclick = ()=>{
   setTimeout(()=>{ $("shCopy").textContent = "Copy"; }, 1600);
 };
 document.addEventListener("keydown", e=>{
-  if(e.key === "Escape"){ if(openSheet) hide(); else if(active) close(); }
+  if(e.key==="Tab" && openSheet){
+    const box=$(openSheet), controls=Array.from(box.querySelectorAll("button:not([disabled])")).filter(el=>!el.hidden);
+    if(!controls.length) return;
+    const current=controls.indexOf(document.activeElement), next=e.shiftKey ?
+      (current<=0 ? controls[controls.length-1] : controls[current-1]) :
+      (current<0 || current>=controls.length-1 ? controls[0] : controls[current+1]);
+    e.preventDefault(); next.focus();
+  }
+  if(e.key==="Escape"){ if(openSheet) hide(); else if(active) $("back").click(); }
+});
+window.addEventListener("storage",e=>{
+  if(!active && (!e.key || e.key.startsWith("c2."))) drawRoll();
 });
 window.addEventListener("popstate", ()=>{
   const h = splitHash(location.hash);
@@ -6335,6 +6365,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this rope. Same knots, one loop."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -7261,6 +7292,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this deal. Same thirty pieces."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -8402,6 +8434,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) toast("Someone sent you this board. Same plots, same clues."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -9465,6 +9498,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) toast("Someone sent you this yard. Same wagons, same par."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -10459,6 +10493,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this field. Same numbers, one answer."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
