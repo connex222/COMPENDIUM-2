@@ -39,6 +39,7 @@ All `C2.write` volume keys are wrapped `{v:1,d:<value>}` except Fell's legacy bo
 - Source inspection confirmed **9/9** manifest entries, **9/9** embedded volumes, and all ten shell/volume scripts passed a static JavaScript syntax parse in the connected inspection environment.
 - The saved-state classifier passed **28/28 synthetic scenarios** across all nine volumes (fresh, in progress, complete and free-session return), before the later Reeve baseline refinement.
 - `node qa/verify.mjs` is a reproducible dependency-free source/contract check on this branch. It does **not** constitute a successful browser solve.
+- The Chromium QA script now includes **nine game-specific interaction/persistence paths**: Fell solve, Mirrorwork matched pair, Glean route, Riffle hint, Bight hint, Marquetry rotation, Reeve deduction hint, Shunt planning hint and Furlong strip hint. It also launches, refreshes and returns from all nine games. These are **automated test definitions**, not evidence of successful execution; six of the nine are deliberately partial-play checks, not complete solves.
 - **Not yet verified:** a real Chrome/Edge/Safari end-to-end solve, interrupted save, refresh, resume and back-to-library for every one of the nine games. These are **blocking** acceptance tests before approval. Do not claim 9/9 E2E or publish this branch on the strength of static checks alone.
 
 ## Browser acceptance matrix — required before merge
