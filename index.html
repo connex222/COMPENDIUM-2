@@ -163,6 +163,50 @@ button:focus:not(:focus-visible){outline:none}
 .vol.uncut:hover{border-color:var(--hair)}
 .vol.uncut .blurb{font-style:italic}
 
+
+/* ---------- collection identity and progress ---------- */
+.collection-notice{margin:0 0 14px; padding:12px 16px; border-radius:var(--radius); color:var(--ink); border:1px solid var(--gilt); background:var(--well); font-size:.85rem; font-weight:600}
+.collection-head{padding:18px 0 12px}
+.eyebrow{margin:0 0 7px; color:var(--gilt); font:700 .7rem var(--util); letter-spacing:.18em; text-transform:uppercase}
+.collection-head h2{font-family:var(--serif); font-weight:var(--w-disp); font-size:clamp(1.55rem,5vw,2.3rem); line-height:1.12; margin:0 0 10px}
+.collection-head p:last-child{margin:0; max-width:55ch; color:var(--ink-2); font-size:.9rem}
+.progress-panel{display:flex; gap:12px; align-items:center; padding:14px 16px; margin:10px 0 16px; border-radius:var(--radius-plate); border:1px solid var(--hair); background:var(--well)}
+.progress-panel .count{font:600 1.5rem var(--serif); color:var(--ink); min-width:58px}
+.progress-panel .explain{font-size:.8rem; color:var(--ink-2); line-height:1.45}
+.progress-meter{height:5px; border-radius:999px; margin-top:7px; background:var(--ground); overflow:hidden}
+.progress-meter span{display:block; height:100%; width:0; background:var(--gilt); transition:width .2s var(--ease)}
+.filters{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 16px}
+.filters button{font:600 .78rem var(--body); padding:9px 14px; min-height:42px; border:1px solid var(--hair); border-radius:999px; background:var(--plate); color:var(--ink-2); cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
+.empty{padding:24px 16px; text-align:center; color:var(--ink-2); border:1px dashed var(--hair); border-radius:var(--radius-plate)}
+.vol{position:relative; overflow:hidden}
+.vol::before{content:""; position:absolute; inset:0 auto 0 0; width:4px; background:var(--gilt); opacity:.78}
+.vol .meta{display:flex; gap:7px; flex-wrap:wrap; margin-top:8px; font-size:.71rem; line-height:1.4; color:var(--ink-2)}
+.vol .meta span{padding:3px 8px; background:var(--well); border-radius:999px; border:1px solid var(--hair)}
+.vol .meta .state{font-weight:700; color:var(--ink)}
+.vol .meta .state[data-state="done"]{color:var(--gilt)}
+.vol .meta .state[data-state="progress"]{color:var(--ink)}
+.vol .roman{align-self:center}
+.vol .crest{
+  flex:0 0 74px; min-width:0; height:84px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px; border-radius:13px;
+  background:var(--well); border:1px solid var(--hair); box-shadow:var(--sink);
+  color:var(--gilt);
+}
+.vol .crest svg{width:46px;height:46px;display:block;stroke:currentColor;
+  stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;fill:none;
+  transition:transform .18s var(--ease)}
+.vol:hover .crest svg,.vol:focus-visible .crest svg{transform:scale(1.07)}
+.vol .crest .roman{flex:0 0 auto;width:auto;font:600 .64rem var(--util);
+  letter-spacing:.16em;line-height:1.1}
+@media(max-width:390px){
+  .vol{gap:10px;padding:12px}
+  .vol .crest{flex-basis:60px;height:74px}
+  .vol .crest svg{width:38px;height:38px}
+}
+@media(min-width:760px){.vol{min-height:126px}.rollinner{padding-top:14px}.collection-head{padding-top:20px}}
+@media(prefers-reduced-motion:reduce){.progress-meter span{transition:none}}
+
 /* ---------- a volume ---------- */
 #stage{position:relative}
 #frame{
@@ -270,8 +314,27 @@ html[data-theme="glare"] .btn.go{border-width:3px}
 
   <section class="view on" id="roll" aria-label="The roll">
     <div class="rollinner">
+      <div class="collection-head">
+        <p class="eyebrow">The second collection · nine volumes</p>
+        <h2>Choose your next puzzle.</h2>
+        <p>Each volume has its own rules, rhythm and reward. Pick a fresh challenge or return to something unfinished.</p>
+      </div>
       <p class="legend" id="legend"></p>
+      <div class="progress-panel" aria-live="polite" aria-atomic="true">
+        <span class="count" id="progressCount">0 / 9</span>
+        <div class="explain" style="flex:1">
+          <span id="progressText">Checking saved progress…</span>
+          <div class="progress-meter" aria-hidden="true"><span id="progressBar"></span></div>
+        </div>
+      </div>
+      <div class="filters" role="group" aria-label="Filter puzzles by progress">
+        <button type="button" data-filter="all" aria-pressed="true">All nine</button>
+        <button type="button" data-filter="progress" aria-pressed="false">In progress</button>
+        <button type="button" data-filter="done" aria-pressed="false">Completed</button>
+      </div>
+      <p id="collectionNotice" class="collection-notice" role="status" hidden></p>
       <div id="vols"></div>
+      <p class="empty" id="empty" hidden>No puzzles in this view. Choose All nine to explore the collection.</p>
       <p class="fine">Nothing here reaches the network. No accounts, no adverts, no tracking.</p>
     </div>
   </section>
@@ -333,6 +396,7 @@ const MANIFEST = [
 const DEFAULTS = {mode:"auto", sound:true, haptic:true};
 let prefs = Object.assign({}, DEFAULTS);
 let active = null;                       /* slug of the volume on stage */
+let launchMode = "daily";                 /* respects a saved free-play session */
 let frag = "";                           /* the part of the hash the volume owns */
 /* Inside the Android app the page lives at appassets.androidplatform.net,
    which nobody else can open, so a link built from it is dead on arrival.
@@ -392,7 +456,7 @@ function merged(){
 }
 function openable(v){
   if(!v.file) return false;
-  return merged() ? payload(v.slug) !== null : true;
+  return merged() ? document.getElementById("vol-" + v.slug) !== null : true;
 }
 
 /* ---------- prefs ---------- */
@@ -432,35 +496,171 @@ function mount(opts){
   try{ f.contentWindow.postMessage({c2:1, type:"mount", opts:opts || {}}, "*"); }catch(e){}
 }
 
-/* ---------- the roll ---------- */
+/* ---------- editorial discovery and local-only progress ---------- */
+/* Difficulty is an editorial starting estimate, not a claim about personal skill.
+   Status is inferred from each volume's existing saves; no key is renamed. */
+const CATALOGUE = {
+  fell:       {kind:"Chain-reaction logic", difficulty:"Gentle to hard", length:"Quick decision"},
+  mirrorwork: {kind:"Memory and pattern", difficulty:"Adjustable", length:"Timed pairs"},
+  riffle:     {kind:"Word discovery", difficulty:"Moderate", length:"At your pace"},
+  glean:      {kind:"Route and scoring", difficulty:"Gentle to hard", length:"Short runs"},
+  bight:      {kind:"Loop deduction", difficulty:"Demanding", length:"At your pace"},
+  marquetry:  {kind:"Spatial placement", difficulty:"Moderate", length:"30 pieces"},
+  reeve:      {kind:"Logic and evidence", difficulty:"Demanding", length:"25 plots"},
+  shunt:      {kind:"Move planning", difficulty:"Moderate to hard", length:"At your pace"},
+  furlong:    {kind:"Region deduction", difficulty:"Demanding", length:"At your pace"}
+};
+const SIGILS = {
+  fell:'<circle cx="18" cy="17" r="4"/><circle cx="45" cy="17" r="4"/><circle cx="31" cy="32" r="4"/><circle cx="17" cy="47" r="4"/><circle cx="45" cy="47" r="4"/><path d="M21 21l7 8m7 0 7-8M28 35l-8 8m15-8 7 8"/>',
+  mirrorwork:'<rect x="9" y="9" width="21" height="21" rx="3"/><rect x="34" y="34" width="21" height="21" rx="3"/><path d="M15 20l5-5 5 5-5 5zM40 45l5-5 5 5-5 5zM34 15h10v10H34zM14 38h10v10H14z"/>',
+  riffle:'<rect x="6" y="12" width="18" height="23" rx="3"/><rect x="23" y="25" width="18" height="23" rx="3"/><rect x="40" y="12" width="18" height="23" rx="3"/><path d="M11 18h8m-6 6h4m14 9v9m-5-5h10m9-19h8m-6 6h4"/>',
+  glean:'<path d="M8 52L21 35 32 40 46 15 56 22"/><circle cx="8" cy="52" r="4"/><circle cx="21" cy="35" r="4"/><circle cx="32" cy="40" r="4"/><circle cx="46" cy="15" r="4"/><circle cx="56" cy="22" r="4"/>',
+  bight:'<path d="M17 16c-16 1-13 26 2 34 18 10 42-2 34-23-5-15-24-24-36-11zm0 0c8 8 19 19 34 17"/><circle cx="16" cy="16" r="3"/><circle cx="51" cy="33" r="3"/>',
+  marquetry:'<rect x="8" y="8" width="48" height="48" rx="3"/><path d="M8 25h48M27 8v48M27 40h29M40 25v15M8 42h19"/><path d="M13 18h8m16-5 7 7m-28 30h7m23-5 6 6"/>',
+  reeve:'<rect x="13" y="6" width="38" height="52" rx="4"/><path d="M21 17h22M21 28h22M21 39h22M21 50h12M34 49l4 4 8-9"/><circle cx="24" cy="28" r="1.5"/>',
+  shunt:'<path d="M5 43h54M10 27h24v16H10zM36 31h17v12H36zM18 27v-7h9v7"/><circle cx="18" cy="47" r="4"/><circle cx="44" cy="47" r="4"/><path d="M8 17h9M12 13v8M53 19l6 6-6 6"/>',
+  furlong:'<rect x="8" y="8" width="48" height="48" rx="3"/><path d="M8 25h28V8M36 25v31M8 40h28M36 40h20M47 40v16M36 25h20"/><circle cx="20" cy="17" r="2"/><circle cx="21" cy="49" r="2"/><circle cx="45" cy="17" r="2"/>'
+};
+let rollFilter = "all";
+const FINISH_LINES={
+  fell:"One decisive move. Fell solved.",
+  mirrorwork:"Every pair reunited.",
+  riffle:"A clean sweep of the word rack.",
+  glean:"The line is in. Your haul is banked.",
+  bight:"The rope closes into one loop.",
+  marquetry:"The veneer panel is complete.",
+  reeve:"Every plot accounted for.",
+  shunt:"The van is free of the yard.",
+  furlong:"Every strip fits the field."
+};
+let statusOnOpen=null;
+function localDate(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function bareSave(key){
+  try{ const v = JSON.parse(localStorage.getItem("c2.v."+key)); return v && v.v === 1 ? v : null; }
+  catch(e){ return null; }
+}
+function progressFor(v){
+  const key = k => readRaw("v."+v.slug+"."+k, null);
+  const daily = key("day"), free = key("free"), today = localDate();
+  const status = (state,extra,mode) => ({state, extra:extra || "",mode:mode || "daily"});
+  if(v.slug === "fell"){
+    const n = Number(key("size")) || 5;
+    const s = bareSave("fell.state"+(n===5?"":n));
+    if(s && s.daily && s.date === today)
+      return s.correct ? status("done","Today's board solved") :
+        Number.isInteger(s.played) ? status("progress","Try today's board again") : status("new","");
+    return status("new",bareSave("fell.stats"+(n===5?"":n))?.plays ? "New daily board available" : "");
+  }
+  if(v.slug === "mirrorwork"){
+    const s = key("session");
+    if(s && !s.won && (s.started || s.moves>0 || (Array.isArray(s.matched) && s.matched.length)))
+      return status("progress","Saved deal · resume");
+    const best = key("best");
+    return best && typeof best==="object" && Object.keys(best).length ? status("done","Personal best recorded") : status("new");
+  }
+  if(v.slug === "riffle"){
+    const n = Number(key("state")?.len) || 6, r = key("rack"+n);
+    if(r && r.complete) return status("done","All words found on this rack");
+    if(r && Array.isArray(r.found) && r.found.length) return status("progress",r.found.length+" words found");
+    return status("new");
+  }
+  if(v.slug === "glean"){
+    const r = key("run."+(key("state")?.mode==="free"?"free":"daily"));
+    if(r && Number.isInteger(r.i) && (r.mode!=="daily" || r.date===today))
+      return r.done ? status("done","Current field completed") :
+        Array.isArray(r.path) && r.path.length>1 ? status("progress","Saved line · resume") : status("new");
+    const hauls=key("hauls");
+    return hauls && Object.keys(hauls).length ? status("new","Previous bests saved") : status("new");
+  }
+  const touched = (s) => {
+    if(!s || typeof s!=="object") return false;
+    if(v.slug==="bight") return (Array.isArray(s.h) && s.h.some(Boolean)) || (Array.isArray(s.v) && s.v.some(Boolean));
+    if(v.slug==="marquetry") return (s.i||0)>0;
+    if(v.slug==="reeve") return (Array.isArray(s.known) && s.known.filter(x=>x===0 || x===1 || x===true || x===false).length>1);
+    if(v.slug==="shunt") return (Array.isArray(s.hist) && s.hist.length>0);
+    if(v.slug==="furlong") return (Array.isArray(s.placed) && s.placed.length>0);
+    return false;
+  };
+  if(daily && daily.date===today && touched(daily) && !daily.done)
+    return status("progress","Today's challenge saved");
+  if(free && !free.done && touched(free))
+    return status("progress","Free puzzle saved","free");
+  if(daily && daily.date===today && (daily.done || (v.slug==="marquetry" && daily.first) || (v.slug==="shunt" && daily.best)))
+    return status("done","Today's challenge completed");
+  return status("new",key("stats")?.plays ? "A new daily challenge awaits" : "");
+}
 function drawRoll(){
-  const cut = MANIFEST.filter(openable).length;
-  $("legend").textContent = cut + " of " + MANIFEST.length +
-    " volumes cut. Everything works offline and keeps your place.";
+  const cut=MANIFEST.filter(openable).length, entries=MANIFEST.map(v=>({v, live:openable(v), progress:progressFor(v)}));
+  const done=entries.filter(e=>e.live && e.progress.state==="done").length;
+  const underway=entries.filter(e=>e.live && e.progress.state==="progress").length;
+  $("legend").textContent = cut+" available · offline play · progress is kept on this device";
+  $("progressCount").textContent = done+" / "+cut;
+  $("progressText").textContent = done+" completed · "+underway+" in progress · "+(cut-done-underway)+" ready to explore";
+  $("progressBar").style.width = (cut ? Math.round(done/cut*100) : 0)+"%";
   const box = $("vols");
   box.innerHTML = "";
-  for(const v of MANIFEST){
-    const live = openable(v);
-    const b = document.createElement("button");
-    b.className = "vol" + (live ? "" : " uncut");
-    b.type = "button";
-    if(!live) b.disabled = true;
-    b.innerHTML =
-      '<span class="roman" aria-hidden="true">' + v.roman + '</span>' +
-      '<span class="text"><span class="name">' + v.title + '</span>' +
-      '<span class="blurb">' + (live ? v.blurb : "Not yet cut.") + '</span></span>' +
-      (live ? '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>' : '');
-    b.setAttribute("aria-label", "Volume " + v.roman + ", " + v.title +
-      (live ? ". " + v.blurb : ", not yet cut"));
-    if(live) b.onclick = ()=> open(v);
+  const visits=readRaw("library.visits",{}) || {};
+  let shown=0;
+  for(const {v,live,progress} of entries){
+    if(live && rollFilter!=="all" && progress.state!==rollFilter) continue;
+    shown++;
+    const info=CATALOGUE[v.slug], state=progress.state==="done"?"Completed":progress.state==="progress"?"In progress":"New";
+    const b=document.createElement("button");
+    b.className="vol"+(live?"":" uncut");
+    b.id="tile-"+v.slug;
+    b.type="button";
+    if(!live) b.disabled=true;
+    const meta=document.createElement("span");
+    meta.className="meta";
+    for(const str of [info.kind,info.difficulty,info.length]){
+      const chip=document.createElement("span"); chip.textContent=str; meta.appendChild(chip);
+    }
+    const last=visits[v.slug];
+    if(Number.isFinite(last) && last>0 && last<=Date.now()){
+      const lastChip=document.createElement("span");
+      lastChip.textContent="Last opened "+new Date(last).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+      meta.appendChild(lastChip);
+    }
+    const chip=document.createElement("span");
+    chip.className="state"; chip.dataset.state=progress.state;
+    chip.textContent=state; meta.appendChild(chip);
+    const number=document.createElement("span"); number.className="roman"; number.textContent=v.roman;
+    const crest=document.createElement("span"); crest.className="crest"; crest.setAttribute("aria-hidden","true");
+    const artwork=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    artwork.setAttribute("viewBox","0 0 64 64");
+    artwork.innerHTML=SIGILS[v.slug];
+    crest.append(artwork,number);
+    const body=document.createElement("span"); body.className="text";
+    const name=document.createElement("span"); name.className="name"; name.textContent=v.title;
+    const blurb=document.createElement("span"); blurb.className="blurb";
+    blurb.textContent=live ? v.blurb+(progress.extra ? " · "+progress.extra : "") : "Not available.";
+    body.append(name,blurb,meta);
+    b.append(crest,body);
+    b.setAttribute("aria-label","Volume "+v.roman+", "+v.title+". "+info.kind+". "+info.difficulty+". "+state+". "+blurb.textContent);
+    if(live) b.onclick=()=>open(v);
     box.appendChild(b);
   }
+  $("empty").hidden=shown>0;
+  for(const b of document.querySelectorAll(".filters button"))
+    b.setAttribute("aria-pressed", String(b.dataset.filter===rollFilter));
 }
+for(const b of document.querySelectorAll(".filters button"))
+  b.onclick=()=>{rollFilter=b.dataset.filter; drawRoll();};
 
 /* ---------- opening and closing a volume ---------- */
-function open(v, withFrag){
+function open(v, withFrag, fromHistory){
   active = v.slug;
   frag = withFrag || "";
+  const before=progressFor(v);
+  launchMode=before.mode;
+  statusOnOpen=before.state;
+  $("collectionNotice").hidden=true;
+  const visits=readRaw("library.visits",{}) || {};
+  visits[v.slug]=Date.now();
+  writeRaw("library.visits",visits);
   $("title").textContent = v.title;
   $("back").hidden = false;
   $("cog").hidden = false;
@@ -471,19 +671,34 @@ function open(v, withFrag){
   const inline = payload(v.slug);
   if(inline !== null) f.srcdoc = inline;
   else f.src = v.file;
-  try{ history.pushState({slug:v.slug}, "",
+  if(!fromHistory) try{ history.pushState({slug:v.slug}, "",
         "#" + v.slug + (frag ? "/" + frag : "")); }catch(e){}
 }
 function close(){
-  const f = $("frame");
-  try{ if(f.contentWindow) f.contentWindow.postMessage({c2:1, type:"suspend"}, "*"); }catch(e){}
+  const last=active, f=$("frame");
+  /* Flush an in-flight move before detaching the srcdoc iframe. A posted
+     message would arrive after this frame has already been destroyed. */
+  try{
+    const volume=f.contentWindow && f.contentWindow.VOLUME;
+    if(volume && typeof volume.suspend==="function") volume.suspend();
+    else if(f.contentWindow) f.contentWindow.postMessage({c2:1,type:"suspend"},"*");
+  }catch(e){}
   f.removeAttribute("srcdoc"); f.removeAttribute("src");
-  active = null;
-  frag = "";
-  $("title").textContent = "The Compendium II";
-  $("back").hidden = true;
+  active=null; frag="";
+  $("title").textContent="The Compendium II";
+  $("back").hidden=true;
   $("stage").classList.remove("on");
   $("roll").classList.add("on");
+  drawRoll();
+  const finished=MANIFEST.find(v=>v.slug===last);
+  if(finished && statusOnOpen!=="done" && progressFor(finished).state==="done"){
+    $("collectionNotice").textContent=FINISH_LINES[last];
+    $("collectionNotice").hidden=false;
+  }
+  statusOnOpen=null;
+  const tile=$("tile-"+last);
+  if(tile) tile.focus();
+  else document.querySelector(".filters button[aria-pressed=\"true\"]")?.focus();
   /* Replace, never push: pushing here left the volume's entry behind, so
      the hardware Back button on the roll reopened the volume just closed. */
   try{ history.replaceState({}, "", location.pathname + location.search); }catch(e){}
@@ -493,8 +708,8 @@ $("frame").addEventListener("load", ()=>{ $("spinner").hidden = true; push(); })
 /* ---------- the C2 host side — contract v3 §4 ---------- */
 window.addEventListener("message", e=>{
   const d = e.data;
-  if(!d || d.c2 !== 1) return;
-  if(d.type === "ready"){ $("spinner").hidden = true; push(); mount({mode:"daily", frag:frag}); }
+  if(!active || e.source !== $("frame").contentWindow || !d || d.c2 !== 1 || (d.slug && d.slug!==active)) return;
+  if(d.type === "ready"){ $("spinner").hidden = true; push(); mount({mode:launchMode, frag:frag}); }
   if(d.type === "share" && Array.isArray(d.lines)) openShare(d.lines);
   /* §9 the volume names its board; the shell puts it in the address bar */
   if(d.type === "frag" && typeof d.frag === "string" && d.slug === active){
@@ -508,7 +723,9 @@ window.addEventListener("message", e=>{
 
 /* ---------- sheets ---------- */
 let openSheet = null;
+let sheetReturnFocus = null;
 function show(id){
+  sheetReturnFocus = document.activeElement;
   const s = $(id);
   s.hidden = false;
   $("scrim").classList.add("on");
@@ -524,6 +741,8 @@ function hide(){
   $("scrim").classList.remove("on");
   setTimeout(()=>{ s.hidden = true; }, 320);
   openSheet = null;
+  if(sheetReturnFocus && typeof sheetReturnFocus.focus==="function") sheetReturnFocus.focus();
+  sheetReturnFocus=null;
 }
 function openShare(lines){
   pendingShare = lines.join("\n");
@@ -535,10 +754,10 @@ $("setClose").onclick = hide;
 $("shClose").onclick = hide;
 $("scrim").onclick = hide;
 $("back").onclick = ()=>{
-  /* Opened from the roll: step back through history and let popstate close
-     it, so Back on the roll then leaves the app instead of reopening this. */
-  if(history.state && history.state.slug) history.back();
-  else close();
+  /* A srcdoc iframe contributes entries to the joint browser history.
+     history.back() may navigate only that iframe, leaving the puzzle in place.
+     Explicit Back to collection must always close the parent view directly. */
+  if(active) close();
 };
 $("soundSw").onclick = ()=>{ prefs.sound = !prefs.sound; applyPrefs(true); };
 $("hapticSw").onclick = ()=>{ prefs.haptic = !prefs.haptic; applyPrefs(true); };
@@ -556,12 +775,23 @@ $("shCopy").onclick = ()=>{
   setTimeout(()=>{ $("shCopy").textContent = "Copy"; }, 1600);
 };
 document.addEventListener("keydown", e=>{
-  if(e.key === "Escape"){ if(openSheet) hide(); else if(active) close(); }
+  if(e.key==="Tab" && openSheet){
+    const box=$(openSheet), controls=Array.from(box.querySelectorAll("button:not([disabled])")).filter(el=>!el.hidden);
+    if(!controls.length) return;
+    const current=controls.indexOf(document.activeElement), next=e.shiftKey ?
+      (current<=0 ? controls[controls.length-1] : controls[current-1]) :
+      (current<0 || current>=controls.length-1 ? controls[0] : controls[current+1]);
+    e.preventDefault(); next.focus();
+  }
+  if(e.key==="Escape"){ if(openSheet) hide(); else if(active) $("back").click(); }
+});
+window.addEventListener("storage",e=>{
+  if(!active && (!e.key || e.key.startsWith("c2."))) drawRoll();
 });
 window.addEventListener("popstate", ()=>{
   const h = splitHash(location.hash);
   const v = MANIFEST.filter(x=>x.slug === h.slug && openable(x))[0];
-  if(v && (v.slug !== active || h.frag !== frag)) open(v, h.frag);
+  if(v && (v.slug !== active || h.frag !== frag)) open(v, h.frag, true);
   else if(!v && active) close();
 });
 
@@ -575,7 +805,7 @@ function start(){
   const h = splitHash(location.hash);
   if(!h.slug) return;
   const v = MANIFEST.filter(x=>x.slug === h.slug && openable(x))[0];
-  if(v) open(v, h.frag);
+  if(v) open(v, h.frag, true);
 }
 if(document.readyState === "loading")
   document.addEventListener("DOMContentLoaded", start);
@@ -2196,7 +2426,7 @@ C2.register({
   mount: function (opts) {
     var c = readChallenge((opts && opts.frag) || C2.frag());
     if (!c) return;                                   // boot has already dealt a fresh board
-    if (c.seed === seed && c.size === sizeN && c.deck === deckId) return;
+    if (c.seed === seed && c.size === sizeN && c.deck === deckId && c.peek === peekOn) return;
     deckId = c.deck; sizeN = c.size; peekOn = c.peek;
     pendingSeed = c.seed;
     challenge = c;                                    // turns the "beat their time" banner on
@@ -2204,7 +2434,7 @@ C2.register({
   },
   status: function () { return { best: best[bestKey()] || null, size: sizeN, deck: deckId }; },
   /* Backgrounded mid-game: stop the clock rather than let it run on. */
-  suspend: function () { try { setPaused(true); } catch (e) {} }
+  suspend: function () { try { resolveNow(); setPaused(true); saveSession(); } catch (e) {} }
 });
 
 /* ---------------- decks & palettes ---------------- */
@@ -2474,6 +2704,51 @@ const clock = ms => {
 const savePrefs = () => {
   C2.write("prefs", {deck:deckId, size:sizeN, peek:peekOn});
 };
+/* An unfinished memory deal must survive closing the volume, a refresh or
+   a backgrounded phone. Transient face-up misses are settled before suspend
+   and are not part of the stored result. Existing best/prefs keys are kept. */
+function saveSession(){
+  if(won){ C2.write("session", null); return; }
+  const running = startedAt !== null;
+  const time = running && !paused ? Math.max(0,Date.now()-startedAt) : elapsed;
+  C2.write("session", {
+    version:1,deck:deckId,size:sizeN,peek:peekOn,seed:seed>>>0,
+    matched:Array.from(matched),moves:moves,hits:hits,
+    elapsed:Math.max(0,Math.round(time)),started:running,
+    challenge:challenge && challenge.seed===seed ? challenge : null
+  });
+}
+function restoreSession(){
+  const s=C2.read("session",null);
+  if(!s || s.version!==1 || !DECKS.some(d=>d.id===s.deck) ||
+     !SIZES.some(z=>z.n===s.size) || !Number.isSafeInteger(s.seed) ||
+     s.seed<0 || s.seed>0xffffffff || typeof s.peek!=="boolean" ||
+     !Number.isSafeInteger(s.moves) || s.moves<0 ||
+     !Number.isSafeInteger(s.hits) || s.hits<0 || s.hits>s.moves ||
+     !Number.isFinite(s.elapsed) || s.elapsed<0 || !Array.isArray(s.matched)) return false;
+  const link=readChallenge(C2.frag());
+  if(link && (link.seed!==s.seed || link.size!==s.size || link.deck!==s.deck || link.peek!==s.peek)) return false;
+  deckId=s.deck; sizeN=s.size; peekOn=s.peek; seed=s.seed; pendingSeed=null;
+  challenge=link || (s.challenge && s.challenge.seed===seed ? s.challenge : null);
+  cards=buildDeck();
+  const allowed=new Set(cards.filter(c=>!c.ornament).map(c=>c.uid));
+  const savedMatches=s.matched.filter(uid=>typeof uid==="string" && allowed.has(uid));
+  if(new Set(savedMatches).size!==savedMatches.length || savedMatches.length%2!==0 ||
+     savedMatches.length>sizeInfo().pairs*2) return false;
+  const valid=new Set(savedMatches);
+  for(const c of cards) if(valid.has(c.uid) && !valid.has(c.i+(c.uid.endsWith("a")?"b":"a"))) return false;
+  matched=valid; flipped=[]; moves=s.moves; hits=s.hits;
+  if(matched.size/2>hits || hits>moves) return false;
+  elapsed=Math.round(s.elapsed); startedAt=s.started ? Date.now()-elapsed : null;
+  won=false; paused=!!s.started;
+  el("win").hidden=true; el("veil").hidden=!paused;
+  el("pause").innerHTML=paused ? ICON_PLAY : ICON_PAUSE;
+  el("pause").setAttribute("aria-label",paused?"Resume game":"Pause game");
+  renderChips(); renderBoard(); paintCards(); paintStats(); paintChallenge();
+  syncUrl();
+  say(paused ? "Deal restored. Resume when ready." : "Your saved deal is ready.");
+  return true;
+}
 
 const say = msg => { el("say").textContent = msg; };
 
@@ -2678,6 +2953,7 @@ function newGame(){
   Sound.fire("deal");
   syncUrl();
   if (peekOn) runPeek();
+  saveSession();
 }
 
 /* the address bar always describes the board on screen, so a refresh
@@ -2721,6 +2997,7 @@ function setPaused(on){
   el("pause").setAttribute("aria-label", paused ? "Resume game" : "Pause game");
   paintCards();
   paintStats();
+  saveSession();
   Sound.fire("toggle");
 }
 
@@ -2736,6 +3013,7 @@ function onFlip(uid){
   Sound.fire("flip");
 
   flipped.push(uid);
+  saveSession();
   paintCard(card);
   if (flipped.length < 2) return;
 
@@ -2753,6 +3031,7 @@ function onFlip(uid){
       paintStats();
       say("Match. " + (matched.size/2) + " of " + sizeInfo().pairs + " found.");
       if (matched.size === sizeInfo().pairs * 2) finish();
+      else saveSession();
     }, 460);
   } else {
     Sound.fire("miss");
@@ -2763,6 +3042,7 @@ function onFlip(uid){
     schedule(() => {
       flipped = [];
       paintCard(a); paintCard(b);
+      saveSession();
     }, 900);
   }
   paintStats();
@@ -2804,6 +3084,7 @@ function finish(){
   el("win").hidden = false;
   paintCards();
   paintStats();
+  saveSession();
   say("Round complete in " + clock(elapsed) + " and " + moves + " moves.");
   el("again").focus();
 }
@@ -2895,7 +3176,7 @@ document.addEventListener("keydown", e => {
 });
 
 /* auto-pause when the game leaves the screen */
-document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { resolveNow(); setPaused(true); saveSession(); } });
 
 /* keep the board inside the viewport on every layout change */
 window.addEventListener("resize", queueFit, { passive:true });
@@ -2909,7 +3190,7 @@ el("pause").innerHTML = ICON_PAUSE;
 el("pause").setAttribute("aria-label", "Pause game");
 el("share").innerHTML = ICON_CHAT + "<span>Share on WhatsApp</span>";
 
-newGame();
+if(!restoreSession()) newGame();
 <\/script>
 </body>
 </html>
@@ -3893,6 +4174,7 @@ function submit(){
   R.streak++;
   const swept = R.found.length === solutions.length;
   if(swept){ gained += SWEEP_BONUS; notes.push("clean sweep, +" + SWEEP_BONUS); }
+  R.complete = swept;
 
   P.score += gained;
   R.rackScore += gained;
@@ -4744,6 +5026,38 @@ let cells = [];
 /* ================= persistence ================= */
 function savePrefs(){ C2.write("state", P); }
 function saveHauls(){ C2.write("hauls", HAULS); }
+function dayStamp(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+/* Keep current line separate from the banked best scores. It is intentionally
+   recomputed from the board on restore, never trusted as a stored score. */
+function saveRun(){
+  if(!B) return;
+  C2.write("run."+P.mode,{
+    i:B.i,mode:P.mode,date:dayStamp(),path:path.slice(),runs:runs,done:done
+  });
+}
+function restoreRun(s){
+  if(!s || s.i!==B.i || s.mode!==P.mode ||
+     (P.mode==="daily" && s.date!==dayStamp()) ||
+     !Array.isArray(s.path) || s.path.length<1 || s.path.length>STEPS+1 ||
+     s.path[0]!==B.start) return false;
+  const seen=new Set();
+  for(let j=0;j<s.path.length;j++){
+    const i=s.path[j];
+    if(!Number.isInteger(i) || i<0 || i>=CELLS || seen.has(i) ||
+       (j>0 && nbrs[s.path[j-1]].indexOf(i)<0)) return false;
+    seen.add(i);
+  }
+  path=s.path.slice(); score=0; chain=0; prev=-1;
+  for(const i of path){const v=B.vals[i];chain=stepChain(v,prev,chain);score+=v*chain;prev=v;}
+  const head=path[path.length-1];
+  const terminal=path.length===STEPS+1 || !nbrs[head].some(i=>!seen.has(i));
+  done=!!s.done && terminal;
+  runs=Number.isInteger(s.runs) && s.runs>=0 ? s.runs : 0;
+  paint(); return true;
+}
 function loadAll(){
   P = Object.assign(P, C2.read("state", {}) || {});
   HAULS = C2.read("hauls", {}) || {};
@@ -4795,10 +5109,13 @@ function todayIndex(){
   return ((Math.floor((utc - EPOCH)/86400000) % c) + c) % c;
 }
 function loadBoard(i, quiet){
-  B = board(((i % BOARDS) + BOARDS) % BOARDS);
-  runs = 0; showingBest = false;
+  const saved=C2.read("run."+P.mode,null);
+  B=board(((i%BOARDS)+BOARDS)%BOARDS);
+  runs=0; showingBest=false;
   buildGrid();
-  resetRun(true);
+  resetRun(true,true);
+  restoreRun(saved);
+  saveRun();
   syncHash();
   if(!quiet) drawStrip();
 }
@@ -4814,13 +5131,14 @@ function buildGrid(){
   });
   cells[B.start].classList.add("start");
 }
-function resetRun(quiet){
-  path = [B.start];
-  score = B.vals[B.start];
-  chain = 1; prev = B.vals[B.start];
-  done = false; showingBest = false;
-  el.ghost.style.display = "none";
+function resetRun(quiet,skipSave){
+  path=[B.start];
+  score=B.vals[B.start];
+  chain=1; prev=B.vals[B.start];
+  done=false; showingBest=false;
+  el.ghost.style.display="none";
   paint();
+  if(!skipSave) saveRun();
   if(!quiet) sndBack();
 }
 
@@ -4900,6 +5218,7 @@ function extend(i){
     paint();
     if(!nbrs[i].some(n=>path.indexOf(n) < 0)) { sndDead(); finish(); }
   }
+  saveRun();
   return true;
 }
 function undo(){
@@ -4908,7 +5227,7 @@ function undo(){
   score = scorePath(B.vals, path);
   chain = 0; prev = -1;
   for(const i of path){ const v = B.vals[i]; chain = stepChain(v, prev, chain); prev = v; }
-  sndBack(); paint();
+  sndBack(); paint(); saveRun();
 }
 function floatGain(i, gain){
   if(calm()) return;
@@ -4927,6 +5246,7 @@ function finish(){
   if(score >= B.max){ sndPerf(); toast("<b>Perfect line.</b> Nothing left on the field."); }
   else if(beaten && runs > 1){ sndBeat(); toast("<b>" + score + "</b> beats your " + prevBest + "."); }
   else sndEnd();
+  saveRun();
 }
 
 /* ================= the strip ================= */
@@ -5091,7 +5411,12 @@ if(!(hasFace("Didot") || hasFace("Bodoni MT") || hasFace("Playfair Display")))
 loadAll();
 const shared = parseHash(C2.frag());
 if(shared !== null){ P.mode = "free"; loadBoard(shared, true); }
-else loadBoard(P.mode === "daily" ? todayIndex() : Math.floor(Math.random()*BOARDS), true);
+else {
+  const previous=C2.read("run.free",null);
+  loadBoard(P.mode==="daily" ? todayIndex() :
+    (previous && previous.mode==="free" && !previous.done && Number.isInteger(previous.i) && previous.i>=0 && previous.i<BOARDS ?
+      previous.i : Math.floor(Math.random()*BOARDS)),true);
+}
 markSeg();
 drawStrip();
 requestAnimationFrame(()=>drawLine(el.line, path));
@@ -6097,6 +6422,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this rope. Same knots, one loop."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -7023,6 +7349,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this deal. Same thirty pieces."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -8164,6 +8491,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) toast("Someone sent you this board. Same plots, same clues."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -9177,7 +9505,7 @@ function vkClockKeeper(el, get, set) {
   function loadFree(seed) {
     mode = "free";
     var s = C2.read("free", null);
-    if (seed === undefined) seed = (s && !s.best) ? s.seed : (Math.random() * 4294967296) >>> 0;
+    if (seed === undefined) seed = (s && !s.done && Number.isInteger(s.seed)) ? s.seed : (Math.random() * 4294967296) >>> 0;
     C2.setFrag("y=" + seed.toString(36));
     generate(seed, FREE[0], FREE[1], function (c) {
       present(c, (s && s.seed === seed && Array.isArray(s.hist)) ? s : null);
@@ -9227,6 +9555,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) toast("Someone sent you this yard. Same wagons, same par."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({
@@ -10221,6 +10550,7 @@ function vkClockKeeper(el, get, set) {
     if (booted && !m) return;
     booted = true;
     if (m) { loadFree(parseInt(m[1], 36) >>> 0); if (o) vkToast("Someone sent you this field. Same numbers, one answer."); }
+    else if (o && o.mode === "free") loadFree();
     else loadDaily();
   }
   C2.register({

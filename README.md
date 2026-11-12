@@ -1,8 +1,10 @@
 # The Compendium II
 
-Nine puzzles for you to play: Fell, Mirrorwork, Riffle, Glean, Reeve, Shunt, Bight, Marquetry and Furlong.
+Nine puzzles for you to play: Fell, Mirrorwork, Riffle, Glean, Bight, Marquetry, Reeve, Shunt and Furlong.
 
-Complete. All nine volumes are finished and playable.
+All nine volumes are included. The collection uses locally saved progress to mark new, unfinished and completed puzzles, and lets players resume an unfinished free puzzle when available. Existing scores and daily boards remain individual to each game.
+
+**Release:** Collection-coherence improvements have been approved for publication on GitHub Pages from `main`. The game remains fully offline and keeps existing `c2.` saved data. QA covers all nine launch/refresh/return routes; complete end-to-end solving remains to be expanded for five games (see `qa/CATALOGUE-AND-ACCEPTANCE.md`).
 
 **Open it:** https://connex222.github.io/COMPENDIUM-2/
 

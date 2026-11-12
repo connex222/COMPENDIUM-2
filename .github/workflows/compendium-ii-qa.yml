@@ -1,0 +1,41 @@
+name: Compendium II review QA
+
+# Review-only. Neither this workflow nor the feature branch deploys Pages.
+on:
+  pull_request:
+    paths:
+      - index.html
+      - qa/**
+      - .github/workflows/compendium-ii-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalogue-and-browser:
+    name: Nine-volume catalogue and Chromium smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Offline source and saved-state checks
+        run: node qa/verify.mjs
+      - name: Install browser test driver (not shipped with the game)
+        run: npm install --no-save --no-audit --no-fund playwright-core
+      - name: Locate Chrome
+        shell: bash
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [[ -z "$CHROME" ]]; then
+            echo "Chrome/Chromium not found on the GitHub runner" >&2
+            exit 1
+          fi
+          echo "CHROME_BIN=$CHROME" >> "$GITHUB_ENV"
+      - name: Browser launch, refresh, state and keyboard checks
+        run: node qa/browser.mjs
