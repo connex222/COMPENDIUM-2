@@ -2,9 +2,6 @@ name: Compendium II review QA
 
 # Review-only. Neither this workflow nor the feature branch deploys Pages.
 on:
-  push:
-    branches:
-      - improvement/compendium-ii-coherence
   pull_request:
     paths:
       - index.html
