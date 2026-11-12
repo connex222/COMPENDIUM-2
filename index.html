@@ -187,6 +187,23 @@ button:focus:not(:focus-visible){outline:none}
 .vol .meta .state[data-state="done"]{color:var(--gilt)}
 .vol .meta .state[data-state="progress"]{color:var(--ink)}
 .vol .roman{align-self:center}
+.vol .crest{
+  flex:0 0 74px; min-width:0; height:84px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px; border-radius:13px;
+  background:var(--well); border:1px solid var(--hair); box-shadow:var(--sink);
+  color:var(--gilt);
+}
+.vol .crest svg{width:46px;height:46px;display:block;stroke:currentColor;
+  stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;fill:none;
+  transition:transform .18s var(--ease)}
+.vol:hover .crest svg,.vol:focus-visible .crest svg{transform:scale(1.07)}
+.vol .crest .roman{flex:0 0 auto;width:auto;font:600 .64rem var(--util);
+  letter-spacing:.16em;line-height:1.1}
+@media(max-width:390px){
+  .vol{gap:10px;padding:12px}
+  .vol .crest{flex-basis:60px;height:74px}
+  .vol .crest svg{width:38px;height:38px}
+}
 @media(min-width:760px){.vol{min-height:126px}.rollinner{padding-top:14px}.collection-head{padding-top:20px}}
 @media(prefers-reduced-motion:reduce){.progress-meter span{transition:none}}
 
@@ -493,6 +510,17 @@ const CATALOGUE = {
   shunt:      {kind:"Move planning", difficulty:"Moderate to hard", length:"At your pace"},
   furlong:    {kind:"Region deduction", difficulty:"Demanding", length:"At your pace"}
 };
+const SIGILS = {
+  fell:'<circle cx="18" cy="17" r="4"/><circle cx="45" cy="17" r="4"/><circle cx="31" cy="32" r="4"/><circle cx="17" cy="47" r="4"/><circle cx="45" cy="47" r="4"/><path d="M21 21l7 8m7 0 7-8M28 35l-8 8m15-8 7 8"/>',
+  mirrorwork:'<rect x="9" y="9" width="21" height="21" rx="3"/><rect x="34" y="34" width="21" height="21" rx="3"/><path d="M15 20l5-5 5 5-5 5zM40 45l5-5 5 5-5 5zM34 15h10v10H34zM14 38h10v10H14z"/>',
+  riffle:'<rect x="6" y="12" width="18" height="23" rx="3"/><rect x="23" y="25" width="18" height="23" rx="3"/><rect x="40" y="12" width="18" height="23" rx="3"/><path d="M11 18h8m-6 6h4m14 9v9m-5-5h10m9-19h8m-6 6h4"/>',
+  glean:'<path d="M8 52L21 35 32 40 46 15 56 22"/><circle cx="8" cy="52" r="4"/><circle cx="21" cy="35" r="4"/><circle cx="32" cy="40" r="4"/><circle cx="46" cy="15" r="4"/><circle cx="56" cy="22" r="4"/>',
+  bight:'<path d="M17 16c-16 1-13 26 2 34 18 10 42-2 34-23-5-15-24-24-36-11zm0 0c8 8 19 19 34 17"/><circle cx="16" cy="16" r="3"/><circle cx="51" cy="33" r="3"/>',
+  marquetry:'<rect x="8" y="8" width="48" height="48" rx="3"/><path d="M8 25h48M27 8v48M27 40h29M40 25v15M8 42h19"/><path d="M13 18h8m16-5 7 7m-28 30h7m23-5 6 6"/>',
+  reeve:'<rect x="13" y="6" width="38" height="52" rx="4"/><path d="M21 17h22M21 28h22M21 39h22M21 50h12M34 49l4 4 8-9"/><circle cx="24" cy="28" r="1.5"/>',
+  shunt:'<path d="M5 43h54M10 27h24v16H10zM36 31h17v12H36zM18 27v-7h9v7"/><circle cx="18" cy="47" r="4"/><circle cx="44" cy="47" r="4"/><path d="M8 17h9M12 13v8M53 19l6 6-6 6"/>',
+  furlong:'<rect x="8" y="8" width="48" height="48" rx="3"/><path d="M8 25h28V8M36 25v31M8 40h28M36 40h20M47 40v16M36 25h20"/><circle cx="20" cy="17" r="2"/><circle cx="21" cy="49" r="2"/><circle cx="45" cy="17" r="2"/>'
+};
 let rollFilter = "all";
 const FINISH_LINES={
   fell:"One decisive move. Fell solved.",
@@ -599,13 +627,18 @@ function drawRoll(){
     const chip=document.createElement("span");
     chip.className="state"; chip.dataset.state=progress.state;
     chip.textContent=state; meta.appendChild(chip);
-    const number=document.createElement("span"); number.className="roman"; number.setAttribute("aria-hidden","true"); number.textContent=v.roman;
+    const number=document.createElement("span"); number.className="roman"; number.textContent=v.roman;
+    const crest=document.createElement("span"); crest.className="crest"; crest.setAttribute("aria-hidden","true");
+    const artwork=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    artwork.setAttribute("viewBox","0 0 64 64");
+    artwork.innerHTML=SIGILS[v.slug];
+    crest.append(artwork,number);
     const body=document.createElement("span"); body.className="text";
     const name=document.createElement("span"); name.className="name"; name.textContent=v.title;
     const blurb=document.createElement("span"); blurb.className="blurb";
     blurb.textContent=live ? v.blurb+(progress.extra ? " · "+progress.extra : "") : "Not available.";
     body.append(name,blurb,meta);
-    b.append(number,body);
+    b.append(crest,body);
     b.setAttribute("aria-label","Volume "+v.roman+", "+v.title+". "+info.kind+". "+info.difficulty+". "+state+". "+blurb.textContent);
     if(live) b.onclick=()=>open(v);
     box.appendChild(b);
