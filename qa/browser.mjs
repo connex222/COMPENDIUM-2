@@ -231,6 +231,26 @@ try{
     checks.push(slug+": full hinted solve, result persisted, reload and catalogue completed");
   }
 
+  // Mirrorwork: solve an entire shuffled deal through card buttons.
+  // A new deal avoids the deliberately paused interrupted-session fixture above.
+  await open("mirrorwork");
+  await iframe().locator("#shuffle").click();
+  const pairIds=await iframe().locator(".scene[data-uid]").evaluateAll(
+    nodes=>nodes.map(n=>n.dataset.uid).filter(uid=>/^[0-9]+a$/.test(uid)));
+  assert.ok(pairIds.length>=3,"Mirrorwork needs multiple actual pairs");
+  for (const a of pairIds) {
+    const b=a.slice(0,-1)+"b";
+    await iframe().locator('.scene[data-uid="'+a+'"]').click();
+    await iframe().locator('.scene[data-uid="'+b+'"]').click();
+    await iframe().locator('.scene[data-uid="'+a+'"].matched').waitFor({timeout:12000});
+  }
+  await iframe().locator("#win:not([hidden])").waitFor({timeout:12000});
+  await page.reload({waitUntil:"domcontentloaded"});
+  await opened("mirrorwork");
+  await back();
+  assert.equal(await page.locator("#tile-mirrorwork .state").innerText(),"Completed");
+  checks.push("Mirrorwork: full matched-pair solve, win result, refresh and catalogue completion");
+
   // Verify keyboard and touch-sized tile targets and cross-game local history.
   await page.locator('#cog').focus();
   await page.keyboard.press("Enter");
