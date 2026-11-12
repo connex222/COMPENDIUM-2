@@ -207,6 +207,30 @@ try{
   await back();
   checks.push("marquetry: rotate piece, persist orientation, refresh and return");
 
+  // Full UI completions for the two constructive logic boards.
+  // Hints are intentionally used: the goal is to test the game's own
+  // completion validator, saved result and replay-safe refresh.
+  for (const slug of ["bight","furlong"]) {
+    await open(slug);
+    const key="c2.v."+slug+".day";
+    let solved=false;
+    for (let step=0;step<160;step++) {
+      const saved=(await stored(key))?.d;
+      if (saved?.done) {solved=true;break;}
+      await iframe().locator("#hint").click();
+      await page.waitForTimeout(25);
+    }
+    assert.ok(solved || (await stored(key))?.d?.done,slug+" did not finish via UI hints");
+    const finished=(await stored(key)).d;
+    assert.equal(finished.done,true,slug+" done flag");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await opened(slug);
+    assert.equal((await stored(key)).d.done,true,slug+" completion survives refresh");
+    await back();
+    assert.equal(await page.locator("#tile-"+slug+" .state").innerText(),"Completed");
+    checks.push(slug+": full hinted solve, result persisted, reload and catalogue completed");
+  }
+
   // Verify keyboard and touch-sized tile targets and cross-game local history.
   await page.locator('#cog').focus();
   await page.keyboard.press("Enter");
