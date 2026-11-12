@@ -78,7 +78,7 @@ try{
 
   // A true Fell solve through the player's own hint-and-move controls.
   await open("fell");
-  await iframe().locator("#grid button").first().waitFor({timeout:30000});
+  await iframe().locator("#grid button:not([disabled])").first().waitFor({timeout:30000});
   await iframe().locator("#reveal").click();
   await iframe().locator('#grid [data-armed="1"]').click({timeout:30000});
   await page.waitForFunction(()=>{
