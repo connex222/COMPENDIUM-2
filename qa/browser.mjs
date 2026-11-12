@@ -48,8 +48,17 @@ try{
     await opened(slug);
   }
   async function back(){
+    const before=await page.evaluate(()=>({hash:location.hash,state:history.state,
+      active:window.active,historyLength:history.length}));
     await page.locator("#back").click();
-    await page.waitForFunction(()=>document.querySelector("#roll")?.classList.contains("on"));
+    try{ await page.waitForFunction(()=>document.querySelector("#roll")?.classList.contains("on"),null,{timeout:6500}); }
+    catch(e){
+      const after=await page.evaluate(()=>({hash:location.hash,state:history.state,
+        active:window.active,historyLength:history.length,
+        stageOn:document.querySelector("#stage")?.classList.contains("on")}));
+      console.error("BACK ROUTE DEBUG",JSON.stringify({before,after}));
+      throw e;
+    }
   }
   function iframe(){return page.frameLocator("#frame");}
   async function stored(key){
