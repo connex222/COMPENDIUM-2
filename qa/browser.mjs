@@ -136,6 +136,36 @@ try{
   assert.equal(await page.locator("#tile-glean .state").innerText(),"In progress");
   checks.push("Glean: actual path survives refresh and return");
 
+  // Exercise four further puzzle engines through real on-screen hint controls.
+  // This checks a saved mutation, exact persisted state, refresh recovery and
+  // collection navigation. It is NOT a substitute for a complete UI solve.
+  for (const slug of ["bight","reeve","shunt","furlong"]) {
+    await open(slug);
+    await iframe().locator("#hint:not([disabled])").waitFor({timeout:30000});
+    await iframe().locator("#hint").click();
+    const key="c2.v."+slug+".day";
+    await page.waitForFunction(key=>{
+      try{return JSON.parse(localStorage.getItem(key))?.d?.hints>=1;}
+      catch{return false;}
+    },key,{timeout:30000});
+    const before=(await stored(key)).d;
+    await page.reload({waitUntil:"domcontentloaded"});
+    await opened(slug);
+    await page.waitForFunction(({key,expected})=>{
+      try{
+        const now=JSON.parse(localStorage.getItem(key))?.d;
+        return !!now && now.seed===expected.seed &&
+          now.hints===expected.hints &&
+          (expected.h===undefined || JSON.stringify(now.h)===JSON.stringify(expected.h)) &&
+          (expected.v===undefined || JSON.stringify(now.v)===JSON.stringify(expected.v)) &&
+          (expected.placed===undefined || JSON.stringify(now.placed)===JSON.stringify(expected.placed)) &&
+          (expected.hist===undefined || JSON.stringify(now.hist)===JSON.stringify(expected.hist));
+      }catch{return false;}
+    },{key,expected:before},{timeout:30000});
+    await back();
+    checks.push(slug+": interactive hint, saved state, refresh recovery, return");
+  }
+
   // Verify keyboard and touch-sized tile targets and cross-game local history.
   await page.locator('#cog').focus();
   await page.keyboard.press("Enter");
