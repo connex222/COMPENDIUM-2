@@ -62,7 +62,8 @@ write("bight","day",{date:today,h:[0,1],v:[],done:false});check("bight","progres
 write("bight","day",{date:today,done:true});check("bight","done","loop completed");
 write("marquetry","day",{date:today,i:5,done:false});check("marquetry","progress","pieces placed");
 write("marquetry","day",{date:today,i:30,done:true});check("marquetry","done","panel complete");
-write("reeve","day",{date:today,known:[null,1],done:false});check("reeve","progress","plots proven");
+write("reeve","day",{date:today,known:[-1,1,-1],done:false});check("reeve","new","compulsory starting clue");
+write("reeve","day",{date:today,known:[0,1,-1],done:false});check("reeve","progress","plots proven");
 write("reeve","day",{date:today,done:true});check("reeve","done","plots settled");
 write("shunt","day",{date:today,hist:[1],done:false});check("shunt","progress","yard underway");
 write("shunt","day",{date:today,hist:[1],done:true});check("shunt","done","van escaped");
