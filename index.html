@@ -165,6 +165,7 @@ button:focus:not(:focus-visible){outline:none}
 
 
 /* ---------- collection identity and progress ---------- */
+.collection-notice{margin:0 0 14px; padding:12px 16px; border-radius:var(--radius); color:var(--ink); border:1px solid var(--gilt); background:var(--well); font-size:.85rem; font-weight:600}
 .collection-head{padding:18px 0 12px}
 .eyebrow{margin:0 0 7px; color:var(--gilt); font:700 .7rem var(--util); letter-spacing:.18em; text-transform:uppercase}
 .collection-head h2{font-family:var(--serif); font-weight:var(--w-disp); font-size:clamp(1.55rem,5vw,2.3rem); line-height:1.12; margin:0 0 10px}
@@ -314,6 +315,7 @@ html[data-theme="glare"] .btn.go{border-width:3px}
         <button type="button" data-filter="progress" aria-pressed="false">In progress</button>
         <button type="button" data-filter="done" aria-pressed="false">Completed</button>
       </div>
+      <p id="collectionNotice" class="collection-notice" role="status" hidden></p>
       <div id="vols"></div>
       <p class="empty" id="empty" hidden>No puzzles in this view. Choose All nine to explore the collection.</p>
       <p class="fine">Nothing here reaches the network. No accounts, no adverts, no tracking.</p>
@@ -492,6 +494,18 @@ const CATALOGUE = {
   furlong:    {kind:"Region deduction", difficulty:"Demanding", length:"At your pace"}
 };
 let rollFilter = "all";
+const FINISH_LINES={
+  fell:"One decisive move. Fell solved.",
+  mirrorwork:"Every pair reunited.",
+  riffle:"A clean sweep of the word rack.",
+  glean:"The line is in. Your haul is banked.",
+  bight:"The rope closes into one loop.",
+  marquetry:"The veneer panel is complete.",
+  reeve:"Every plot accounted for.",
+  shunt:"The van is free of the yard.",
+  furlong:"Every strip fits the field."
+};
+let statusOnOpen=null;
 function localDate(){
   const d = new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -514,7 +528,7 @@ function progressFor(v){
   }
   if(v.slug === "mirrorwork"){
     const s = key("session");
-    if(s && !s.won && (s.moves>0 || (Array.isArray(s.matched) && s.matched.length)))
+    if(s && !s.won && (s.started || s.moves>0 || (Array.isArray(s.matched) && s.matched.length)))
       return status("progress","Saved deal · resume");
     const best = key("best");
     return best && typeof best==="object" && Object.keys(best).length ? status("done","Personal best recorded") : status("new");
@@ -607,7 +621,10 @@ for(const b of document.querySelectorAll(".filters button"))
 function open(v, withFrag, fromHistory){
   active = v.slug;
   frag = withFrag || "";
-  launchMode=progressFor(v).mode;
+  const before=progressFor(v);
+  launchMode=before.mode;
+  statusOnOpen=before.state;
+  $("collectionNotice").hidden=true;
   const visits=readRaw("library.visits",{}) || {};
   visits[v.slug]=Date.now();
   writeRaw("library.visits",visits);
@@ -640,6 +657,12 @@ function close(){
   $("stage").classList.remove("on");
   $("roll").classList.add("on");
   drawRoll();
+  const finished=MANIFEST.find(v=>v.slug===last);
+  if(finished && statusOnOpen!=="done" && progressFor(finished).state==="done"){
+    $("collectionNotice").textContent=FINISH_LINES[last];
+    $("collectionNotice").hidden=false;
+  }
+  statusOnOpen=null;
   const tile=$("tile-"+last);
   if(tile) tile.focus();
   else document.querySelector(".filters button[aria-pressed=\"true\"]")?.focus();
@@ -4118,6 +4141,7 @@ function submit(){
   R.streak++;
   const swept = R.found.length === solutions.length;
   if(swept){ gained += SWEEP_BONUS; notes.push("clean sweep, +" + SWEEP_BONUS); }
+  R.complete = swept;
 
   P.score += gained;
   R.rackScore += gained;
